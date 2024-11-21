@@ -1,0 +1,436 @@
+---
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+#GRAPH THEORY APPLICATIONS TO COMPREHEND EPIDEMICS SPREAD OF A DISEASE
+#Disease outbreaks that are infectious form a repeating menace both to animals and humans.
+#It has devastating effect on all aspects of biodiversity, health and economy.
+#The best strategy to contain it is fast determination of cases forming clusters and mitigation follow up of the    #                                                                           strategy to contain the epidemic spread.
+#1.Spatial      - spatial kernel
+#2.Temporal     - time elapsed
+#3.Genetic WGS  - rate of mutation
+```{r, echo = FALSE}
+
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  fig.width = 7, 
+  fig.height = 5,
+  out.width = "80%"
+)
+
+```
+
+```{r}
+load("D:/Naran/Sem 5/SNDA/Package/rabies_car_2003.RData")
+print(rabies_car_2003$linelist)
+```
+
+```{r}
+#rabies_car_2003
+current_indices <- row.names(rabies_car_2003$dna)
+indices_to_remove <- rabies_car_2003$linelist$index[is.na(rabies_car_2003$linelist$latitude) & is.na(rabies_car_2003$linelist$longitude)]
+
+rabies_car_2003$dna <- rabies_car_2003$dna[-which(current_indices %in% indices_to_remove), , drop = FALSE]
+
+valid_rows <- !is.na(rabies_car_2003$linelist$latitude) & !is.na(rabies_car_2003$linelist$longitude)
+
+rabies_car_2003$linelist <- rabies_car_2003$linelist[valid_rows, ]
+
+print(rabies_car_2003$linelist)
+
+```
+
+
+```{r}
+rabies_car_2003
+```
+
+```{r date}
+
+library(incidence) 
+## weekly
+plot(incidence(rabies_car_2003[["linelist"]][["date"]],7))
+
+## monthly
+plot(incidence(rabies_car_2003[["linelist"]][["date"]],365/12))
+
+```
+```{r locations}
+#locations <- t(sapply(1:sim_rabies$n, function(i) sim_rabies$cases[[i]]$location))
+#plot(locations, xlab = "", ylab = "")
+plot(rabies_car_2003[["linelist"]][["longitude"]], rabies_car_2003[["linelist"]][["latitude"]],
+     xlab = "Longitude",  # Set x-axis label
+     ylab = "Latitude",   # Set y-axis label
+     main = "Scatter Plot of Locations",
+     pch = 19,            # Point type
+     col = "blue")        # Color of the points
+```
+```{r dna}
+dna<-rabies_car_2003[["dna"]]
+class(dna)
+length(dna)
+
+dna_sequence <- as.character(dna)
+#print(dna_sequence[1:5,1:5])
+```
+```{r Distance_dates}
+head(rabies_car_2003[["linelist"]][["date"]], 5)
+D_dates <- dist(rabies_car_2003[["linelist"]][["date"]])
+#D_dates
+class(D_dates)
+```
+
+```{r Distances_locations}
+longitudes <- rabies_car_2003[["linelist"]][["longitude"]]
+latitudes <- rabies_car_2003[["linelist"]][["latitude"]]
+locations <- cbind(longitudes, latitudes)
+
+library(fields)
+#print(latitudes)
+#print(longitudes)
+D_geo <- rdist(locations)
+D_geo
+```
+```{r install-quicksim, eval = FALSE}
+devtools::install_github("thibautjombart/quicksim")
+```
+```{r Distances_dna}
+library(ape)
+D_hamming <- dist.dna(dna, model = "raw")
+
+# Print the resulting distance matrix
+#print(D_hamming)
+
+D_hamming_raw <- dist.dna(dna, model = "N", pairwise.deletion = FALSE)
+
+# Print the raw Hamming distance matrix (actual number of differing positions)
+print(D_hamming_raw)
+
+D_dna<-D_hamming_raw
+print(D_dna)
+```
+
+```{r}
+library(ape)
+tree <- ladderize(root(nj(D_dna), 1))
+plot(tree)
+axisPhylo()
+mtext(side = 1, text = "Number of mutations", line = 2.5)
+```
+```{r distances, fig.height = 7} 
+library("vimes")
+D_all <- vimes_data(dates = D_dates, geo = D_geo, dna = D_dna)
+plot(D_all, nclass = 60)
+``` 
+# Defining cutoff distances above which cases are considered not linked by transmission 
+
+## Distributions of expected distances between cases for rabies
+
+The distribution of expected distances between cases in the temporal, spatial, and
+genetic spaces.
+```{r}
+gamma_mean <- 23.55
+gamma_std <- 20.85
+
+gamma_shape <- gamma_mean^2 / (gamma_std^2)
+gamma_scale <- gamma_std^2 / gamma_mean
+
+print(gamma_shape)
+print(gamma_scale)
+```
+
+
+```{r}
+#D_geo
+rayleigh_mean <- 0.88
+rayleigh_scale <- rayleigh_mean / sqrt(acos(-1)/2)
+
+rayleigh_mean
+rayleigh_scale
+```
+```{r}
+## mutation rate
+mu_year_per_site <- 5.9e-4
+n_sites <- 11820
+
+## mutation rate per day and sequence
+mu_day_whole <- (mu_year_per_site * n_sites / 365) 
+print(mu_day_whole)
+#n_sites <- ncol(rabies_car_2003$dna)
+#mu_year_per_site <- 5.9e-4
+#mu_year_per_site <- observed_mutations / (n_sites * years)
+
+#mu_day_whole <- (mu_year_per_site * n_sites / 365)
+
+#gamma_mean_dna <- mean(D_dna)
+#gamma_std_dna <- sd(D_dna)
+
+#gamma_shape_dna <- gamma_mean_dna^2 / (gamma_std_dna^2)
+#gamma_scale_dna <- gamma_std_dna^2 / gamma_mean_dna
+
+#print(gamma_shape_dna)
+#print(gamma_scale_dna)
+
+```
+
+```{r plot_f, fig.height = 7} 
+## distance functions for each of the 3 types
+f_temporal <- fpaircase(type = "temporal", gamma_shape = gamma_shape,
+                        gamma_scale = gamma_scale)
+
+f_spatial <- fpaircase(type = "spatial", sd_spatial = rayleigh_scale)
+
+f_genetic <- fpaircase(type = "genetic", poisson_rate = mu_day_whole,
+                       gamma_shape = gamma_shape, 
+                       gamma_scale = gamma_scale)
+
+## Plotting these
+par(mfrow=c(3,1))
+plot(f_temporal, xlim = c(0,365))
+plot(f_spatial, xlim = c(0,5))
+plot(f_genetic, xlim = c(0,9))
+```
+```{r}
+## reporting rate
+pi <- 0.2
+
+## quantiles
+q <- c(.50, .75, .90, .95, .95^(1/3), .99, .999, .9995, .9999)
+
+## colours used to plot these
+cols <- rainbow(length(q))
+
+## our main results are with the cutoff corresponding to the 95% quantile
+cutoff_choice <- q[4] 
+```
+
+```{r f-with-quantiles, fig.height = 7} 
+## distance functions for each of the 3 types, accounting for reporting
+## probability pi with quantiles q overlayed on the graphs
+
+par(mfrow=c(3,1))
+plot(f_temporal, q[4], xlim = c(0,365*3), pi = pi,
+     lines_arg = list(col=cols, lwd=2))
+plot(f_spatial, q[4], xlim = c(0,15), pi = pi,
+     lines_arg = list(col=cols, lwd=2))
+plot(f_genetic, q[4], xlim = c(0,25), pi = pi,
+     lines_arg = list(col=cols, lwd=2))
+```
+
+```{r}
+plot(D_dates,f_temporal(D_dates), main = "Temporal Function with Quantile Cutoffs", 
+     xlab = "Temporal Distance (days)", ylab = "Density")
+
+cutoffs <- qgamma(q, shape = gamma_shape, scale = gamma_scale)
+y_vals = f_temporal(D_dates)
+# Add vertical lines and labels for each quantile
+for (i in seq_along(q)) {
+  abline(v = cutoffs[i], col = cols[i], lwd = 2, lty = 2)
+  
+  # Adjust y position for visibility
+  label_y <- max(y_vals) * 0.85  # Adjust as needed
+  
+  # Print cutoff and y position for debugging
+  print(paste("Cutoff:", cutoffs[i],  "Quantile : ",q[i]))
+  
+  # Add the text label
+  text(cutoffs[i], label_y, labels = paste("q =", q[i]), pos = 3, col = cols[i], cex = 0.8)
+}
+```
+
+```{r}
+# Calculate the cutoff distances based on D_geo
+cutoffs <- quantile(D_geo, probs = q)
+
+# Create a sequence of x values for plotting
+x_vals <- seq(0, max(D_geo) + 1, length.out = 100)
+y_vals <- f_spatial(x_vals)
+# Plot the spatial function
+plot(x_vals, f_spatial(x_vals), type = "l", col = "blue", lwd = 2,
+     xlim = c(0, max(D_geo) + 1), ylim = c(0, max(f_spatial(x_vals))),
+     xlab = "Distance", ylab = "Density", main = "Spatial Function with Quantiles")
+
+# Add vertical lines for each quantile cutoff
+for (i in seq_along(cutoffs)) {
+    abline(v = cutoffs[i], col = rainbow(length(q))[i], lwd = 2, lty = 2)  # Dashed lines
+  
+    # Print cutoff and y position for debugging
+    print(paste("Cutoff:", cutoffs[i],  "Quantile : ",q[i]))
+    # Add labels for quantiles
+    #text(cutoffs[i], max(f_spatial(x_vals)) * 0.9, labels = paste("q =", round(q[i], 3)), pos = 3, col = rainbow(length(q))[i])
+}
+
+# Optionally add a legend
+legend("topright", legend = paste("q =", round(q, 3)), 
+       col = rainbow(length(q)), lwd = 2, lty = 2)
+
+```
+
+```{r}
+# Plot the genetic function
+plot(D_dna,f_genetic(D_dna), col = "blue", lwd = 2,
+     xlab = "Genetic Distance", ylab = "Density",
+     main = "Genetic Distance Function with Quantiles")
+
+cutoffs <- quantile(D_dna, probs = q)
+
+# Add vertical lines for each quantile cutoff
+for (i in seq_along(cutoffs)) {
+  abline(v = cutoffs[i], col = cols[i], lwd = 2, lty = 2)  # Dashed lines for quantiles
+  
+  print(paste("Cutoff:", cutoffs[i],  "Quantile : ",q[i]))
+  
+  # Add a label at the top of the plot for each cutoff
+  #text(cutoffs[i], max(y_vals), labels = paste("q =", q[i]), pos = 3, col = cols[i])
+}
+legend("center", legend = paste("q =", round(q, 3)), 
+       col = rainbow(length(q)), lwd = 2, lty = 2)
+```
+
+```{r results, cache = TRUE, fig.width = 9, fig.height = 9, out.width = "100%"}
+### function used to get results for a certain cutoff and reporting rate
+
+get_res <- function(D_all, q, pi, f_temporal, f_spatial, f_genetic,
+                    type = c("all", "temporal","spatial", "genetic")) {
+  
+  type <- match.arg(type)
+  
+  ## get the cutoffs
+  cuts <- c(temporal = get_quantiles(f_temporal, q, pi = pi), 
+            spatial = get_quantiles(f_spatial, q, pi = pi),
+            genetic = get_quantiles(f_genetic, q, pi = pi))
+  
+  if (type == "all") {
+    ## use vimes
+    out <- vimes(D_all, cutoff = cuts,
+                 graph.opt = vimes.graph.opt(col.pal = funky))
+  } else if (type == "temporal") {
+    out <- vimes(vimes_data(dates = D_all$dates), cutoff = cuts["temporal"],
+                 graph.opt = vimes.graph.opt(col.pal = funky))
+  } else if (type == "spatial") {
+    out <- vimes(vimes_data(geo = D_all$geo), cutoff = cuts["spatial"],
+                 graph.opt = vimes.graph.opt(col.pal = funky))
+  } else if (type == "genetic") {
+    out <- vimes(vimes_data(dna = D_all$dna), cutoff = cuts["genetic"],
+                 graph.opt = vimes.graph.opt(col.pal = funky))
+  }
+    
+  return(out)
+  
+}
+
+### Use the function above to generate results for several combinations of p and pi in combi (below)
+combi <- expand.grid(p = q,
+                     pi = pi)
+combi
+
+quantile_pretty <- signif(combi$p*100, 4)
+quantile_pretty <- paste0(quantile_pretty, "%")
+
+res <- vector(9L, mode = "list")
+
+for (i in 1:nrow(combi)) {
+    res[[i]] <- get_res(D_all, combi[i, 1],
+                        combi[i, 2], f_temporal,
+                        f_spatial, f_genetic)
+}
+
+### Visualizing the output
+par(mfrow = c(3, 3), mar=c(1,1,3,1))
+
+for (i in 1:length(res)) {
+  plot(res[[i]]$graph, vertex.label = "",
+       main = paste("cutoff:", quantile_pretty[i]))
+}
+
+```
+# Estimate the underlying reproduction number and number of imported cases
+
+```{r eval = FALSE} 
+library(devtools)
+install_github("reconhub/branchr")
+```
+
+```{r} 
+library(branchr)
+
+#Cluster size and reporting rates are taken as inputs for this function which computes the Reproduction number - R
+compute_R  <- function(cl_size, rho) {
+    profile <- profile_likelihood(y_obs = cl_size, 
+                                  rho = rho, 0.01, 20)      #profile of how likely each value of R in the range 0.01 to 20 is
+    R_estimate <- theta_max_likelihood(profile$theta,
+                                       profile$Likelihood,  
+                                       0.95)                #maximum likelihood estimate and a 95% confidence interval for R using the                                                                    #likelihood profile
+    R <- c(central = R_estimate$theta_max_likelihood, 
+           low = R_estimate$lower_theta, 
+           up = R_estimate$upper_theta)                     #estimated central value of R and its lower and upper confidence bounds
+    
+    import <- import(y_obs = cl_size, 
+                     rho = rho, 
+                     profile, 1e3, 1e3, 0.95)               #estimated number of unobserved cases (importations) 
+                                                            #1000 (first instance): number of simulations to estimate the unobserved cases
+                                                            #1e3 (second instance): number of iterations for importation estimation process
+                                                            #0.95 ( 95% )         : confidence level for the resulting estimates
+    unobs <- c(central = import$theta_max_likelihood,
+               low = import$lower_theta,
+               up = import$upper_theta)                     #central, lower, and upper estimates of the unobserved cases
+    
+    return(list(R, unobs))
+}
+
+clust_size <- lapply(res, function(i) i$clusters$size)
+rho <- combi[, 2]
+
+R_estimate_and_imports <- lapply(1:length(clust_size),
+                                 function(i) compute_R(clust_size[[i]], rho[i]))
+
+R_estimates <- sapply(1:length(R_estimate_and_imports), 
+                      function(i) R_estimate_and_imports[[i]][[1]])
+
+N_unobs_estimates <- sapply(1:length(R_estimate_and_imports), 
+                            function(i) R_estimate_and_imports[[i]][[2]])
+
+N_tot_estimates <- N_unobs_estimates + 
+  matrix(rep(lengths(clust_size), 3), 
+         nrow = 3, byrow = TRUE)
+
+n_days <- diff(range(rabies_car_2003[["linelist"]][["date"]]))
+
+rate_import_tot_days <- N_tot_estimates / as.numeric(n_days)
+rate_import_tot_year <- rate_import_tot_days*365
+
+
+### plotting results ###
+
+par(mfrow = c(2, 1))
+
+## R estimates
+plot(R_estimates["central",], ylim = c(0, max(c(1.2, max(R_estimates)))),
+     pch = 19, xlab = "Cutoff used for pruning", ylab = "Estimated R", axes = FALSE)
+axis(side = 1, at = 1:length(R_estimate_and_imports),
+     labels = quantile_pretty, cex = 0.75)
+axis(side = 2)
+for (i in 1:length(R_estimate_and_imports)) {
+  segments(i, R_estimates["low",i],i, R_estimates["up",i])
+}
+
+## adding the reproduction number used to generate the simulation
+abline(h = 0.92, col = "red", lty = 2)
+
+## importation rate estimates
+plot(rate_import_tot_year["central",], ylim = c(0, max(rate_import_tot_year)),
+     pch = 19, xlab = "Cutoff used for pruning",
+     ylab = "Estimated rate of importation (per year)", axes = FALSE)
+axis(side = 1, at = 1:length(R_estimate_and_imports),
+     labels = quantile_pretty, cex = 0.75)
+axis(side = 2)
+for (i in 1:length(R_estimate_and_imports)) {
+  segments(i, rate_import_tot_year["low",i],i, rate_import_tot_year["up",i])
+}
+
+# adding the importation rate used to generate the simulation
+abline(h = 7, col = "red", lty = 2)
+
+```
