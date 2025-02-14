@@ -1,4 +1,4 @@
-#GRAPH THEORY APPLICATIONS TO COMPREHEND EPIDEMICS SPREAD OF A DISEASE
+# GRAPH THEORY APPLICATIONS TO COMPREHEND EPIDEMICS SPREAD OF A DISEASE
 
 Disease outbreaks that are infectious form a repeating menace both to animals and humans.
 It has devastating effect on all aspects of biodiversity, health and economy.
