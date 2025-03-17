@@ -35,8 +35,7 @@ get_quantiles(f_temporal, q = 0.95, pi = 0.2)  # 95% quantile optimal cutoff
 | **Spatial**     | Rayleigh Distribution  | `fields::rdist`        | 0.88 km mean spread radius           |
 | **Genetic**     | Poisson-Gamma Hybrid   | `ape::dist.dna`        | 0.059 mutations/day/sequence         |
 
-### 2. Underreporting Resilience System
-
+### 2. Underreporting Resilience System  
 
 ```r
 # Sensitivity testing
@@ -47,13 +46,8 @@ combi <- expand.grid(
 res <- lapply(1:nrow(combi), function(i) {
   get_res(D_all, combi[i, 1], combi[i, 2], f_temporal, f_spatial, f_genetic)
 })
-```  
-
-**Performance Metrics**  
-- 34% reduction in false negatives vs standard methods  
-- 89% cluster detection accuracy at π=0.2  
-- <5s runtime for 1000-case datasets
-  
+```
+ 
 ## 🧬 Methodology Workflow
 
 ```mermaid
@@ -99,23 +93,8 @@ graph TD
 ### Optimal Cluster Detection (95% Quantile)
 ![Cluster Visualization](https://github.com/user-attachments/assets/dcd5f0c4-cc4a-423a-8c3f-0c32e497e356)
 
-### Underreporting Adjustment Comparison
-
-| Metric              | Without Adjustment | With Adjustment (π=0.2) |
-|---------------------|--------------------|-------------------------|
-| Mean Cluster Size   | 8.2 ± 2.1          | 6.7 ± 1.8               |
-| False Negatives     | 15.2%              | 4.9%                    |
-| Precision           | 82.4%              | 93.1%                   |
-| Runtime             | 4.1s               | 4.8s                    |
-
-### Key Insights:
-- **95% Quantile Cutoff:** Achieved optimal balance between precision and recall  
-- **Underreporting Adjustment:** Reduced false negatives by 34%  
-- **Scalability:** Handled 11,820 genetic sites with <5s runtime  
-
 ### Real-World Impact:
-- **Faster Containment:** Identified outbreak clusters 2.5x faster than traditional methods  
-- **Resource Optimization:** Reduced unnecessary interventions by 22%  
+- **Faster Containment:** Identifies outbreak clusters faster  
 - **Adaptability:** Framework tested on rabies data, adaptable to COVID-19, Ebola, etc.
 
 ## 🛠️ Technical Implementation
@@ -129,9 +108,8 @@ graph TD
 - `fields` for spatial analysis (`rdist`)  
 
 **Development Environment:**
-- R v4.3.1  
-- RStudio 2023.06.0+421  
-- Windows Subsystem for Linux 2  
+- R v4.4.2  
+- RStudio 2024.12.0+467  
 
 ### Installation Guide  
 Clone the repository:  
@@ -153,7 +131,6 @@ Rscript -e "rmarkdown::render('with_underreporting.Rmd')"
   
 ### Key Features:
 - **Modular Design:** Each dimension (temporal, spatial, genetic) is computed independently  
-- **Scalable Architecture:** Processes 100k+ cases in <10s (AWS EC2 benchmark)  
 - **Reproducible Workflow:** Fully documented R Markdown scripts  
 
 ### Code Snippet: Distance Matrix Calculation
@@ -184,7 +161,6 @@ D_dna <- dist.dna(dna, model = "N", pairwise.deletion = FALSE)
 mu_day_whole <- (5.9e-4 * n_sites) / 365  # Verified against genomic literature
 ```  
 ### 3. **Scalable Architecture**
-- Processes 100k+ cases in <10s (AWS EC2 benchmark)  
 - Modular design for COVID-19/Ebola adaptation  
 
 ### 4. **Quantile-Based Optimization**
@@ -196,8 +172,7 @@ res <- lapply(1:nrow(combi), function(i) {
 })
 ```
 ### 5. **Impactful Outcomes**
-- **Faster Containment:** Identified outbreak clusters 2.5x faster than traditional methods  
-- **Resource Optimization:** Reduced unnecessary interventions by 22%  
+- **Faster Containment:** Identified outbreak clusters faster 
 - **Adaptability:** Framework tested on rabies data, adaptable to COVID-19, Ebola, etc.  
 
 ### 6. **Open Science**
