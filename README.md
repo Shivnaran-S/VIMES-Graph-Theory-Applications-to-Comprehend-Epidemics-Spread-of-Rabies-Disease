@@ -136,7 +136,7 @@ graph TD
 ### Installation Guide  
 Clone the repository:  
 ```bash
-git clone https://github.com/yourusername/outbreak-detection.git
+git clone https://github.com/Shivnaran-S/VIMES-Graph-Theory-Applications-to-Comprehend-Epidemics-Spread-of-Rabies-Disease.git
 ```
 
 Install required R packages:
